@@ -1,4 +1,4 @@
-curl -XPUT http://127.0.0.1:9200/movies -H 'Content-Type: application/json' -d'
+curl -XPUT http://elastic:9200/movies -H 'Content-Type: application/json' -d'
 {
   "settings": {
     "refresh_interval": "1s",

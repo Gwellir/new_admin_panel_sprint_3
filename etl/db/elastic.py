@@ -1,8 +1,7 @@
 """Модуль, отвечающий за общение с API elastic search."""
 
 import requests
-
-from etl.common.deco import backoff
+from common.deco import backoff
 
 
 class ElasticClient:

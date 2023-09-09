@@ -28,9 +28,13 @@ class Settings(BaseSettings):
     initial_timestamp: float
     storage_subdir: str
     chunk_size: int = 100
+    request_interval: int  # seconds
 
     elastic_url: str
     elastic_index: str
+
+    log_file: str
+    log_format: str
 
     pg_dsn: PostgresSettings
 
