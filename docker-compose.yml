@@ -1,0 +1,50 @@
+version: '3'
+services:
+  service-etl:
+    build: etl
+    container_name: service-etl
+    command: python main.py
+    depends_on:
+      elastic:
+        condition: service_healthy
+    env_file:
+      - etl/.env
+    environment:
+      - DEBUG=True
+    links:
+      - elastic:elastic
+    volumes:
+      - ./etl/logs:/opt/app/logs
+
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
+    container_name: elastic
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 50
+    volumes:
+      - ./schema/es_schema.txt:/es_schema.sh
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    env_file:
+      - etl/.env
+    environment:
+      - POSTGRES_PASSWORD=${PG_DSN__PASSWORD}
+      - POSTGRES_USER=${PG_DSN__USER}
+      - POSTGRES_DB=${PG_DSN__DBNAME}
+    volumes:
+      - movies_admin_pgdata:/var/lib/postgresql/data
+
+volumes:
+  movies_admin_pgdata:
+    external: true

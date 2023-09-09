@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     elastic_url: str
     elastic_index: str
 
+    log_file: str
+
     pg_dsn: PostgresSettings
 
     base_dir: Path = Path(__file__).resolve().parent
