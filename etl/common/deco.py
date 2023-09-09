@@ -3,6 +3,9 @@ from functools import wraps
 from time import sleep
 from typing import Callable
 
+from psycopg2 import InterfaceError, OperationalError
+from requests import exceptions as exc
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,15 +35,24 @@ def backoff(
         @wraps(func)
         def inner(*args, **kwargs):
             sleep_time = start_sleep_time
-            func_result = None
-            while not func_result:
+            is_done = False
+            while not is_done:
                 try:
                     func_result = func(*args, **kwargs)
-                except Exception as e:
-                    logger.warning('Exc in {}: {}'.format(func.__name__, e.args))
+                    is_done = True
+                except (
+                    OperationalError,
+                    InterfaceError,
+                    exc.HTTPError,
+                    exc.Timeout,
+                    exc.ConnectionError,
+                ) as e:
+                    logger.warning('Произошла ошибка в функции {0}: {1}'.format(func.__name__, e.__doc__))
+                    logger.debug('Сообщение об ошибке: {0}'.format(e.args[0]))
+                    logger.warning('Ожидаем {0} секунд'.format(sleep_time))
                     sleep(sleep_time)
                     if sleep_time < max_sleep_time:
-                        sleep_time = max(sleep_time * factor, max_sleep_time)
+                        sleep_time = min(sleep_time * factor, max_sleep_time)
 
             return func_result
 
