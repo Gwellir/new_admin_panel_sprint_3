@@ -1,10 +1,23 @@
 """Модуль содержит шаблоны запросов к БД Postgres."""
 
+LAST_MODIFIED_QUERY = """
+    SELECT {time_field} as updated_at
+    FROM "content".{table}
+    ORDER BY updated_at DESC
+    LIMIT 1;
+"""
 UPDATED_IDS_QUERY = """
     SELECT id, updated_at
     FROM "content".{table}
     WHERE updated_at > {modified}
     ORDER BY updated_at, id
+    LIMIT {chunk_size};
+    """
+UPDATED_CROSS_IDS_QUERY = """
+    SELECT film_work_id as id, created_at as updated_at
+    FROM "content".{table}
+    WHERE created_at > {modified}
+    ORDER BY updated_at, film_work_id
     LIMIT {chunk_size};
     """
 RELATED_FILM_WORK_QUERY = """

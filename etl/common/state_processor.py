@@ -1,10 +1,14 @@
 """Модуль, отвечающий за работу с состоянием и его хранилищами."""
 
 import abc
+import collections
 import json
+import logging
 from typing import Any, Dict, Optional
 
-from etl.config.settings import STORAGE_DIR
+from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class BaseStorage(abc.ABC):
@@ -43,6 +47,11 @@ class JsonFileStorage(BaseStorage):
         """
         self.file_path = file_path
 
+    def __repr__(self):  # noqa: CCE001
+        return '{0}: <{1}>'.format(self.__class__.__name__, self.file_path)
+
+    __str__ = __repr__
+
     def save_state(self, state: Dict[str, Any]) -> None:
         """Сохранить состояние в хранилище.
 
@@ -65,8 +74,12 @@ class JsonFileStorage(BaseStorage):
             return {}
 
 
-class State:
-    """Класс для работы с состояниями."""
+class State(collections.UserDict):
+    """Класс для работы с состояниями.
+
+    Так как функционал практически совпадает со словарём, класс
+    максимально приближен к словарю через наследование.
+    """
 
     def __init__(
         self,
@@ -79,25 +92,42 @@ class State:
             name: имя хранилища
             storage: хранилище данных типа Storage.
         """
+        super().__init__()
         self.name = name
         if not storage:
-            storage = JsonFileStorage(STORAGE_DIR / '{0}.json'.format(name))
+            storage = JsonFileStorage(
+                settings.storage_dir / '{0}.json'.format(name),
+            )
         self.storage = storage
-        self.current_state = self.storage.retrieve_state()
+        self.data: dict = self.storage.retrieve_state()  # noqa: WPS110
+        logger.debug(
+            'Инициализирован класс состояний: {0}, ключей: {1}'.format(
+                self,
+                len(self.data.keys()),
+            ),
+        )
 
-    def set_state(self, key: str, value: Any) -> Any:  # noqa: WPS110
+    def __repr__(self):
+        return '{0}("{1}"): {2}'.format(
+            self.__class__.__name__,
+            self.name,
+            self.storage,
+        )
+
+    __str__ = __repr__
+
+    def __setitem__(self, key, value):
+        self.set_state(key, value)
+
+    def set_state(self, key: str, value: Any):  # noqa: WPS110
         """Установить состояние для определённого ключа.
 
         Args:
             key: имя ключа
             value: значение для ключа.
-
-        Returns:
-            устанавливаемое значение.
         """
-        self.current_state[key] = value
-        self.storage.save_state(self.current_state)
-        return value
+        self.data[key] = value
+        self.storage.save_state(self.data)
 
     def get_state(self, key: str) -> Any:
         """Получить состояние по определённому ключу.
@@ -108,4 +138,4 @@ class State:
         Returns:
             значение, отвечающее ключу.
         """
-        return self.current_state.get(key, None)
+        return self.data.get(key, None)
