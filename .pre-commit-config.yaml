@@ -1,0 +1,17 @@
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v4.4.0
+    hooks:
+      # предупреждает о добавлении больших файлов в Git
+      - id: check-added-large-files
+      # предотвращает сохранение приватных ключей
+      - id: detect-private-key
+  - repo: local
+    hooks:
+    -   id: flake8
+        name: flake8
+        description: wemake-python-styleguide enforcement
+        entry: flake8
+        args: ["--config=setup.cfg"]
+        language: python
+        types: [python]
