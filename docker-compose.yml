@@ -3,7 +3,8 @@ services:
   service-etl:
     build: etl
     container_name: service-etl
-    command: python main.py
+    command: > 
+      bash -c "sh es_schema.sh && python main.py"
     depends_on:
       elastic:
         condition: service_healthy
@@ -14,7 +15,7 @@ services:
     links:
       - elastic:elastic
     volumes:
-      - ./etl/logs:/opt/app/logs
+      - ./logs/:/opt/app/logs/
 
   elastic:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.2
@@ -29,8 +30,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 50
-    volumes:
-      - ./schema/es_schema.txt:/es_schema.sh
 
   postgres:
     image: postgres:13

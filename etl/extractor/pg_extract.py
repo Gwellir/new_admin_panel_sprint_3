@@ -105,10 +105,18 @@ class PostgresExtractor:  # noqa: WPS214
                 self._state['data'] = None
 
             updated_fw = set()
+            logger.info(
+                'Проверяем свежие записи в таблице {0}'.format(
+                    self._current_table,
+                ),
+            )
             updated_fw.update(self._get_table_updates(self._current_table))
             # если в таблице больше нет свежих данных, мы переходим к следующей
             # или None, если таблиц больше нет (это завершает работу extract)
             if not updated_fw:
+                logger.debug(
+                    'Новых данных нет, переходим к следующей таблице...',
+                )
                 self._current_table = self._next_table.get(self._current_table)
                 continue
 
@@ -122,7 +130,7 @@ class PostgresExtractor:  # noqa: WPS214
             self._state['data'] = self._enriched_data
             self._last_modified = self._current_modified
 
-            logger.info(
+            logger.debug(
                 'Отправка новых данных от таблицы {0}, записей: {1}.'.format(
                     self._current_table,
                     len(self._enriched_data),

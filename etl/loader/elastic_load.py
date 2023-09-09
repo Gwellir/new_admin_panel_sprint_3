@@ -48,7 +48,7 @@ class ElasticLoader:
         bulk_string = self._get_bulk_body(elastic_data)
         answer = self.elastic.post_bulk(bulk_string)
         logger.info(
-            'Отправлено в elastic: код {0}, размер {1}, ошибки {2}'.format(
+            'Отправлено в elastic: код {0}, размер {1}, ошибки: "{2}"'.format(
                 answer, len(elastic_data), answer.json().get('errors'),
             ),
         )

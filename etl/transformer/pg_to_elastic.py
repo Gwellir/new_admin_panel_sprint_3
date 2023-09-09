@@ -1,10 +1,12 @@
 """Модуль, отвечающий за конвертацию из формата Postgres в elastic."""
-
+import logging
 from collections import defaultdict
 from typing import Any, Iterator
 
 from common.state_processor import State
 from frozendict import frozendict
+
+logger = logging.getLogger(__name__)
 
 
 class PostgresElasticTransformer:
@@ -93,6 +95,11 @@ class PostgresElasticTransformer:
 
         Преобразует и формирует нужные списки к полностью собранным объектам.
         """
+        logger.debug(
+            'Преобразуем {0} записей к формату elastic'.format(
+                len(self.film_work_data),
+            ),
+        )
         for film_id in self.film_work_data.keys():
             entry = self.film_work_data[film_id]
             entry['genre'] = list(entry['genre'])

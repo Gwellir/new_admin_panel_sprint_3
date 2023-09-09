@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     elastic_index: str
 
     log_file: str
+    log_format: str
 
     pg_dsn: PostgresSettings
 
