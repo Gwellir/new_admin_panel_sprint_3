@@ -9,7 +9,7 @@ services:
       elastic:
         condition: service_healthy
     env_file:
-      - etl/.env
+      - .env
     environment:
       - DEBUG=True
     links:
@@ -36,14 +36,14 @@ services:
     container_name: postgres
     restart: always
     env_file:
-      - etl/.env
+      - .env
     environment:
       - POSTGRES_PASSWORD=${PG_DSN__PASSWORD}
       - POSTGRES_USER=${PG_DSN__USER}
       - POSTGRES_DB=${PG_DSN__DBNAME}
     volumes:
-      - movies_admin_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+      - ./dump/dump.sql:/dump.sql:ro
 
 volumes:
-  movies_admin_pgdata:
-    external: true
+  pgdata:
