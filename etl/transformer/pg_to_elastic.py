@@ -3,9 +3,8 @@
 from collections import defaultdict
 from typing import Any, Iterator
 
+from common.state_processor import State
 from frozendict import frozendict
-
-from etl.common.state_processor import State
 
 
 class PostgresElasticTransformer:

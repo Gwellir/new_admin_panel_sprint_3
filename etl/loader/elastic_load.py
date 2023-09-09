@@ -3,8 +3,8 @@ import json
 import logging
 from typing import Any
 
-from etl.common.state_processor import State
-from etl.db.elastic import ElasticClient
+from common.state_processor import State
+from db.elastic import ElasticClient
 
 logger = logging.getLogger(__name__)
 
