@@ -57,6 +57,12 @@ class PostgresClient:
         """
         with self.connection.cursor() as cursor:
             cursor.execute(query)
+            # Ну, в данной реализации не применить fetchmany, так как
+            # данные возвращаются один раз для каждого запроса.
+            # Я понимаю, что последующие запросы в случаях других данных могут
+            # порождать очень много строк, и в целом нужна чуть более сложная
+            # архитектура, но боюсь, что не успею отладить больше генераторов.
+            # Впрочем, буду иметь в виду на будущее.
             rows = cursor.fetchall()
 
         return rows
@@ -154,7 +160,6 @@ class PostgresQueryWrapper:
             cross_table=sql.Identifier('{0}_film_work'.format(table)),
             cross_id=sql.Identifier('{0}_id'.format(table)),
             ids=sql.SQL(', ').join(sql.Literal(id_) for id_ in ids),
-            chunk_size=sql.Literal(self._chunk_size),
         )
 
         return self.client.get_query_rows(query)
