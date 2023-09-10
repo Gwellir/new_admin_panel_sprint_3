@@ -1,4 +1,5 @@
 """Модуль, работающий с БД Postgres."""
+import logging
 from collections import namedtuple
 from datetime import datetime
 from typing import Any
@@ -6,8 +7,10 @@ from typing import Any
 from common.deco import backoff
 from config import settings
 from db import queries
-from psycopg2 import connect, sql
+from psycopg2 import InterfaceError, OperationalError, connect, sql
 from psycopg2.extras import NamedTupleCursor
+
+logger = logging.getLogger(__name__)
 
 
 class PostgresClient:
@@ -33,7 +36,10 @@ class PostgresClient:
             )
         return self._connection
 
-    @backoff()
+    @backoff(
+        exceptions=(OperationalError, InterfaceError),
+        logger_func=logger.warning,
+    )
     def get_query_rows(self, query) -> list[namedtuple]:
         """Обращается к БД со сформированным запросом.
 
