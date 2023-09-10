@@ -43,7 +43,7 @@ services:
       - POSTGRES_DB=${PG_DSN__DBNAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./dump/dump.sql:/dump.sql:ro
+      - ./dump/dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
 
 volumes:
   pgdata:

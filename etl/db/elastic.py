@@ -1,7 +1,11 @@
 """Модуль, отвечающий за общение с API elastic search."""
+import logging
 
-import requests
 from common.deco import backoff
+from requests import exceptions as exc
+from requests import post
+
+logger = logging.getLogger(__name__)
 
 
 class ElasticClient:
@@ -18,7 +22,10 @@ class ElasticClient:
         self._index_name = index_name
         self._headers = {'Content-Type': 'application/json'}
 
-    @backoff()
+    @backoff(
+        exceptions=(exc.HTTPError, exc.Timeout, exc.ConnectionError),
+        logger_func=logger.warning,
+    )
     def post_bulk(self, data_string: str):
         """Отправляет набор данных в индекс elastic search.
 
@@ -29,7 +36,7 @@ class ElasticClient:
             Результат обработки запроса (HTTP Response)
         """
         bulk_url = '{0}/_bulk/'.format(self._url)
-        return requests.post(
+        return post(
             bulk_url,
             headers=self._headers,
             data=data_string,

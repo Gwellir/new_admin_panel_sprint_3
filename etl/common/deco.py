@@ -3,16 +3,15 @@ from functools import wraps
 from time import sleep
 from typing import Callable
 
-from psycopg2 import InterfaceError, OperationalError
-from requests import exceptions as exc
-
-logger = logging.getLogger(__name__)
+default_logger = logging.getLogger(__name__)
 
 
 def backoff(
+    exceptions: [Exception | tuple[Exception]] = Exception,
     start_sleep_time: float = 0.1,
     factor: int = 2,
     max_sleep_time: float = 10,
+    logger_func: Callable = default_logger.warning,
 ):
     """
     Декоратор для повторного запуска функции при ошибках.
@@ -25,9 +24,13 @@ def backoff(
         t = max_sleep_time, иначе
 
     Args:
+        exceptions: набор исключений для отслеживания, по умолчанию - все
         start_sleep_time: начальное время ожидания
-        factor: во сколько раз нужно увеличивать время ожидания на каждой итерации
+        factor: во сколько раз нужно увеличивать время ожидания на каждой
+            итерации
         max_sleep_time: максимальное время ожидания
+        logger_func: функция логирования с уровнем, по умолчанию -
+            logger.warning этого модуля
     Returns:
         результат выполнения функции
     """
@@ -40,16 +43,13 @@ def backoff(
                 try:
                     func_result = func(*args, **kwargs)
                     is_done = True
-                except (
-                    OperationalError,
-                    InterfaceError,
-                    exc.HTTPError,
-                    exc.Timeout,
-                    exc.ConnectionError,
-                ) as e:
-                    logger.warning('Произошла ошибка в функции {0}: {1}'.format(func.__name__, e.__doc__))
-                    logger.debug('Сообщение об ошибке: {0}'.format(e.args[0]))
-                    logger.warning('Ожидаем {0} секунд'.format(sleep_time))
+                except exceptions as e:
+                    logger_func(
+                        'Произошла ошибка в функции {0}: {1}'.format(
+                            func.__name__, e.args[0]
+                        )
+                    )
+                    logger_func('Ожидаем {0} секунд...'.format(sleep_time))
                     sleep(sleep_time)
                     if sleep_time < max_sleep_time:
                         sleep_time = min(sleep_time * factor, max_sleep_time)

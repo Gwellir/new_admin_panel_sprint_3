@@ -1,4 +1,5 @@
 """Модуль, работающий с БД Postgres."""
+import logging
 from collections import namedtuple
 from datetime import datetime
 from typing import Any
@@ -6,8 +7,10 @@ from typing import Any
 from common.deco import backoff
 from config import settings
 from db import queries
-from psycopg2 import connect, sql
+from psycopg2 import InterfaceError, OperationalError, connect, sql
 from psycopg2.extras import NamedTupleCursor
+
+logger = logging.getLogger(__name__)
 
 
 class PostgresClient:
@@ -33,7 +36,14 @@ class PostgresClient:
             )
         return self._connection
 
-    @backoff()
+    def close(self):
+        """Закрывает подключение к Postgres."""
+        self._connection.close()
+
+    @backoff(
+        exceptions=(OperationalError, InterfaceError),
+        logger_func=logger.warning,
+    )
     def get_query_rows(self, query) -> list[namedtuple]:
         """Обращается к БД со сформированным запросом.
 
@@ -47,6 +57,12 @@ class PostgresClient:
         """
         with self.connection.cursor() as cursor:
             cursor.execute(query)
+            # Ну, в данной реализации не применить fetchmany, так как
+            # данные возвращаются один раз для каждого запроса.
+            # Я понимаю, что последующие запросы в случаях других данных могут
+            # порождать очень много строк, и в целом нужна чуть более сложная
+            # архитектура, но боюсь, что не успею отладить больше генераторов.
+            # Впрочем, буду иметь в виду на будущее.
             rows = cursor.fetchall()
 
         return rows
@@ -75,7 +91,7 @@ class PostgresQueryWrapper:
         Args:
             chunk_size: размер блока данных для получения из БД
         """
-        self._client = PostgresClient()
+        self.client = PostgresClient()
         self._chunk_size = chunk_size
 
     def get_last_modified_time(self, table: str, cross=False) -> datetime:
@@ -92,13 +108,13 @@ class PostgresQueryWrapper:
             time_field = 'created_at'
         else:
             time_field = 'updated_at'
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.LAST_MODIFIED_QUERY,
             table=sql.Identifier(table),
             time_field=sql.Identifier(time_field),
         )
 
-        return self._client.get_query_rows(query)[0].updated_at
+        return self.client.get_query_rows(query)[0].updated_at
 
     def get_ids_after_time(
         self,
@@ -120,14 +136,14 @@ class PostgresQueryWrapper:
             updated_ids_query = queries.UPDATED_CROSS_IDS_QUERY
         else:
             updated_ids_query = queries.UPDATED_IDS_QUERY
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             updated_ids_query,
             table=sql.Identifier(table),
             modified=sql.Literal(last_modified),
             chunk_size=sql.Literal(self._chunk_size),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
 
     def get_related_film_work_ids(self, table, ids: list[int]):
         """Загружает связанные id film_work для обновленных записей.
@@ -139,15 +155,14 @@ class PostgresQueryWrapper:
         Returns:
             Ряды fw.id, fw.updated_at в виде списка именованных кортежей.
         """
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.RELATED_FILM_WORK_QUERY,
             cross_table=sql.Identifier('{0}_film_work'.format(table)),
             cross_id=sql.Identifier('{0}_id'.format(table)),
             ids=sql.SQL(', ').join(sql.Literal(id_) for id_ in ids),
-            chunk_size=sql.Literal(self._chunk_size),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
 
     def get_enriched_rows(self, fw_ids: list[int]):
         """Загружает расширенный набор данных для обновленных записей.
@@ -158,9 +173,9 @@ class PostgresQueryWrapper:
         Returns:
             Ряды данных БД в виде списка именованных кортежей.
         """
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.ENRICHED_DATA_QUERY,
             ids=sql.SQL(', ').join(sql.Literal(f_id) for f_id in fw_ids),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
