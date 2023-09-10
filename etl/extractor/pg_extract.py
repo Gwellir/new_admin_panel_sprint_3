@@ -146,9 +146,11 @@ class PostgresExtractor:  # noqa: WPS214
     def _reset_state(self):
         """Сбрасывает состояние для последующего повторного использования.
 
-        Сбрасывает ключ current_table
+        Сбрасывает ключ current_table, закрывает подключение к postgres
         """
         self._state['current_table'] = None
+        # чтобы не переоткрывать подключение каждый чанк данных
+        self._db.client.close()
 
     def _update_last_modified_for_skipped(self):
         """Обновляет параметр last_modified для всех таблиц, кроме основной."""

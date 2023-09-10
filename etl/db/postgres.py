@@ -36,6 +36,10 @@ class PostgresClient:
             )
         return self._connection
 
+    def close(self):
+        """Закрывает подключение к Postgres."""
+        self._connection.close()
+
     @backoff(
         exceptions=(OperationalError, InterfaceError),
         logger_func=logger.warning,
@@ -81,7 +85,7 @@ class PostgresQueryWrapper:
         Args:
             chunk_size: размер блока данных для получения из БД
         """
-        self._client = PostgresClient()
+        self.client = PostgresClient()
         self._chunk_size = chunk_size
 
     def get_last_modified_time(self, table: str, cross=False) -> datetime:
@@ -98,13 +102,13 @@ class PostgresQueryWrapper:
             time_field = 'created_at'
         else:
             time_field = 'updated_at'
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.LAST_MODIFIED_QUERY,
             table=sql.Identifier(table),
             time_field=sql.Identifier(time_field),
         )
 
-        return self._client.get_query_rows(query)[0].updated_at
+        return self.client.get_query_rows(query)[0].updated_at
 
     def get_ids_after_time(
         self,
@@ -126,14 +130,14 @@ class PostgresQueryWrapper:
             updated_ids_query = queries.UPDATED_CROSS_IDS_QUERY
         else:
             updated_ids_query = queries.UPDATED_IDS_QUERY
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             updated_ids_query,
             table=sql.Identifier(table),
             modified=sql.Literal(last_modified),
             chunk_size=sql.Literal(self._chunk_size),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
 
     def get_related_film_work_ids(self, table, ids: list[int]):
         """Загружает связанные id film_work для обновленных записей.
@@ -145,7 +149,7 @@ class PostgresQueryWrapper:
         Returns:
             Ряды fw.id, fw.updated_at в виде списка именованных кортежей.
         """
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.RELATED_FILM_WORK_QUERY,
             cross_table=sql.Identifier('{0}_film_work'.format(table)),
             cross_id=sql.Identifier('{0}_id'.format(table)),
@@ -153,7 +157,7 @@ class PostgresQueryWrapper:
             chunk_size=sql.Literal(self._chunk_size),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
 
     def get_enriched_rows(self, fw_ids: list[int]):
         """Загружает расширенный набор данных для обновленных записей.
@@ -164,9 +168,9 @@ class PostgresQueryWrapper:
         Returns:
             Ряды данных БД в виде списка именованных кортежей.
         """
-        query = self._client.prepare_query(
+        query = self.client.prepare_query(
             queries.ENRICHED_DATA_QUERY,
             ids=sql.SQL(', ').join(sql.Literal(f_id) for f_id in fw_ids),
         )
 
-        return self._client.get_query_rows(query)
+        return self.client.get_query_rows(query)
